@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">NFC Tool</string>
+    <string name="tap_prompt">Select an operation, then tap a tag to the back of the phone.</string>
+    <string name="write_hint">Text or URL to write (NDEF)</string>
+    <string name="op_read">Read / Dump</string>
+    <string name="op_write">Write NDEF</string>
+    <string name="op_format">Format NDEF</string>
+    <string name="op_clear">Clear / Erase</string>
+    <string name="op_recover">Recover Password</string>
+    <string name="op_makero">Make Read-Only</string>
+    <string name="clear_log">Clear log</string>
+</resources>
