@@ -14,8 +14,24 @@ dumps the raw memory of common NFC tags — with first-class support for **NfcA*
 | **Write NDEF** | Writes a Text or URI record. Auto-formats `NdefFormatable` tags. |
 | **Format NDEF** | Turns a blank `NdefFormatable` tag into an empty NDEF tag. |
 | **Clear / Erase** | Zeroes the user-data pages (page 4 → last user page), leaving UID/CC/config intact. |
-| **Recover Password** | Tries documented **default** `PWD_AUTH` passwords (+ one optional manual candidate) to regain access to a tag left on defaults. |
+| **Recover Password** | Tries documented **default** `PWD_AUTH` passwords, one optional manual hex candidate, and passwords **derived from the UID** by common weak schemes. |
+| **NFC Tools PW** | Forgotten-password recovery for tags protected with the **NFC Tools** app: tries your own likely passwords (typed in the box) + a bundled common-password list, deriving each `PWD = MD5(text)[0..3]`. Returns the human-readable password on success. |
 | **Make Read-Only** | Sets NDEF lock bits. **Permanent and irreversible** — asked for explicitly. |
+
+### Recovering a forgotten NFC Tools password
+
+The [NFC Tools](https://www.wakdev.com/) app sets a tag's 4-byte `PWD` to the
+**first 4 bytes of `MD5(password_text)`**. If you protected your own tag with it
+and forgot the password, the **NFC Tools PW** button runs a dictionary of your
+likely passwords through that same derivation and, on a match, prints the
+original password string so you can remove the protection in NFC Tools.
+
+- Type your own likely passwords into the input box (space/comma/newline
+  separated) — these are tried first, then a bundled common-password list.
+- This is a *dictionary* recovery of a human-chosen password, not an exhaustive
+  `2^32` brute force (which is infeasible on a phone and isn't provided).
+- It only succeeds if the real password is in the list you try, so add the
+  passwords *you* tend to use.
 
 Supported tech, via `enableReaderMode`: `NfcA`, `NfcB`, `NfcF`, `NfcV`,
 `MifareUltralight`, `Ndef`, `NdefFormatable`, `IsoDep`, `MifareClassic`

@@ -7,6 +7,7 @@
     <string name="op_format">Format NDEF</string>
     <string name="op_clear">Clear / Erase</string>
     <string name="op_recover">Recover Password</string>
+    <string name="op_nfctools">NFC Tools PW</string>
     <string name="op_makero">Make Read-Only</string>
     <string name="clear_log">Clear log</string>
 </resources>

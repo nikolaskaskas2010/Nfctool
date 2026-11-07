@@ -19,8 +19,11 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
     private var nfcAdapter: NfcAdapter? = null
     private val engine = NfcEngine()
 
-    private enum class Op { READ, WRITE, FORMAT, CLEAR, RECOVER, MAKE_RO }
+    private enum class Op { READ, WRITE, FORMAT, CLEAR, RECOVER, NFCTOOLS, MAKE_RO }
     @Volatile private var currentOp: Op = Op.READ
+
+    /** Bundled fallback wordlist, loaded once from res/raw. */
+    private val commonWords: List<String> by lazy { loadWordlist() }
 
     private val readerFlags =
         NfcAdapter.FLAG_READER_NFC_A or
@@ -48,6 +51,9 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
         binding.btnFormat.setOnClickListener { select(Op.FORMAT, "FORMAT") }
         binding.btnClear.setOnClickListener { select(Op.CLEAR, "CLEAR / ERASE") }
         binding.btnRecover.setOnClickListener { select(Op.RECOVER, "RECOVER PASSWORD") }
+        binding.btnNfcTools.setOnClickListener {
+            select(Op.NFCTOOLS, "NFC TOOLS PW (type your guesses in the box)")
+        }
         binding.btnMakeRo.setOnClickListener {
             select(Op.MAKE_RO, "MAKE READ-ONLY (PERMANENT!)")
         }
@@ -82,6 +88,9 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
                 Op.FORMAT -> engine.format(tag)
                 Op.CLEAR -> engine.clear(tag)
                 Op.RECOVER -> engine.recoverPassword(tag, HexUtils.parseHex(uiText()))
+                Op.NFCTOOLS -> engine.recoverNfcToolsPassword(
+                    tag, NfcToolsPwd.splitCandidates(uiText()), commonWords
+                )
                 Op.MAKE_RO -> engine.makeReadOnly(tag)
             }
         } catch (e: Exception) {
@@ -91,6 +100,14 @@ class MainActivity : AppCompatActivity(), NfcAdapter.ReaderCallback {
     }
 
     private fun uiText(): String = binding.writeInput.text?.toString()?.trim().orEmpty()
+
+    private fun loadWordlist(): List<String> = try {
+        resources.openRawResource(R.raw.common_passwords).bufferedReader().useLines { lines ->
+            lines.map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+                .toList()
+        }
+    } catch (e: Exception) { emptyList() }
 
     private fun log(msg: String) {
         val ts = SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())

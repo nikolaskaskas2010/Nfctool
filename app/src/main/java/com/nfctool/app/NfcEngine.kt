@@ -241,6 +241,69 @@ class NfcEngine {
         return sb.toString()
     }
 
+    /**
+     * NFC Tools forgotten-password recovery: for a tag whose owner protected it
+     * with the "NFC Tools" app, try a wordlist of candidate password STRINGS,
+     * deriving each PWD as MD5(text)[0..3] (NFC Tools' scheme). On success the
+     * human-readable password is returned so the owner can unprotect the tag in
+     * NFC Tools. This is a dictionary attack over likely passwords, not an
+     * exhaustive search; it is meant for recovering your own forgotten password.
+     *
+     * @param userGuesses the owner's own likely passwords (tried first)
+     * @param wordlist    fallback common-password list
+     */
+    fun recoverNfcToolsPassword(
+        tag: Tag,
+        userGuesses: List<String>,
+        wordlist: List<String>
+    ): String {
+        val sb = StringBuilder("NFC Tools password recovery (MD5[0..3] of text)\n")
+        sb.append("UID: ").append(HexUtils.toHex(tag.id)).append('\n')
+
+        val candidates = LinkedHashSet<String>()
+        candidates.addAll(userGuesses)
+        candidates.addAll(wordlist)
+        if (candidates.isEmpty())
+            return sb.append("No candidates. Type your likely passwords in the box.\n").toString()
+
+        sb.append("Trying ").append(candidates.size).append(" password(s)...\n")
+        var tried = 0
+        var lost = 0
+        for (text in candidates) {
+            val pwd = NfcToolsPwd.derive(text)
+            val pack = tryAuth(tag, pwd)
+            tried++
+            if (pack != null) {
+                sb.append("SUCCESS after ").append(tried).append(" tries.\n")
+                    .append("Password: \"").append(text).append("\"\n")
+                    .append("PWD bytes: ").append(HexUtils.toHex(pwd))
+                    .append("  PACK=").append(HexUtils.toHex(pack)).append('\n')
+                    .append("Open NFC Tools -> remove password, enter this password.\n")
+                return sb.toString()
+            }
+            // Detect the tag leaving the field so we don't report false "no match".
+            if (!isTagPresent(tag)) {
+                lost++
+                if (lost >= 3) {
+                    sb.append("Tag left the field after ").append(tried)
+                        .append(" tries. Hold it still and run again to continue.\n")
+                    return sb.toString()
+                }
+            } else {
+                lost = 0
+            }
+        }
+        sb.append("No match in ").append(tried).append(" candidates. ")
+            .append("Add more of your own likely passwords to the box and retry.\n")
+        return sb.toString()
+    }
+
+    private fun isTagPresent(tag: Tag): Boolean {
+        val a = NfcA.get(tag) ?: return false
+        return try { a.connect(); true } catch (e: Exception) { false }
+        finally { closeQuietly(a) }
+    }
+
     /** One PWD_AUTH attempt. Returns the 2-byte PACK on success, null on reject. */
     private fun tryAuth(tag: Tag, pwd: ByteArray): ByteArray? {
         val a = NfcA.get(tag) ?: return null

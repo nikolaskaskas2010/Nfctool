@@ -78,6 +78,14 @@
                 android:text="@string/op_recover" />
 
             <Button
+                android:id="@+id/btnNfcTools"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="@string/op_nfctools" />
+
+            <Button
                 android:id="@+id/btnMakeRo"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
