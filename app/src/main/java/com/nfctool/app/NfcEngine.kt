@@ -201,18 +201,28 @@ class NfcEngine {
     }
 
     // -------------------------------------------------------------------------
-    // DEFAULT-PASSWORD RECOVERY (Ultralight EV1 / NTAG21x PWD_AUTH)
-    // Tries only the documented default passwords plus an optional user-supplied
-    // candidate. It is NOT an exhaustive brute-forcer (see PasswordDictionary).
+    // PASSWORD RECOVERY (Ultralight EV1 / NTAG21x PWD_AUTH)
+    // Tries, in order: an optional user-supplied candidate, the documented
+    // default passwords, and candidates derived from the UID by common published
+    // weak schemes. This is a small finite list; it is NOT an exhaustive
+    // brute-forcer (see PasswordDictionary).
     // -------------------------------------------------------------------------
 
     fun recoverPassword(tag: Tag, userCandidate: ByteArray?): String {
-        val sb = StringBuilder("Default-password recovery (PWD_AUTH)\n")
-        val candidates = ArrayList<ByteArray>()
-        userCandidate?.let { if (it.size == 4) candidates.add(it) }
-        candidates.addAll(PasswordDictionary.DEFAULTS)
+        val sb = StringBuilder("Password recovery (PWD_AUTH)\n")
+        sb.append("UID: ").append(HexUtils.toHex(tag.id)).append('\n')
 
-        for (pwd in candidates) {
+        // Order: your manual candidate, then documented defaults, then candidates
+        // derived from the UID by common published weak schemes. This is a small
+        // finite list, NOT an exhaustive brute force.
+        val candidates = LinkedHashSet<List<Byte>>()
+        userCandidate?.let { if (it.size == 4) candidates.add(it.toList()) }
+        PasswordDictionary.DEFAULTS.forEach { candidates.add(it.toList()) }
+        PasswordDictionary.deriveFromUid(tag.id).forEach { candidates.add(it.toList()) }
+
+        sb.append("Trying ").append(candidates.size).append(" candidates...\n")
+        for (c in candidates) {
+            val pwd = c.toByteArray()
             val pack = tryAuth(tag, pwd)
             if (pack != null) {
                 sb.append("SUCCESS: password ")
@@ -223,9 +233,11 @@ class NfcEngine {
                 sb.append("  no: ").append(PasswordDictionary.describe(pwd)).append('\n')
             }
         }
-        sb.append("No default password matched. ")
-            .append("This tag uses a non-default password; it will not be recovered here.\n")
-            .append("(A 32-bit PWD is not exhaustively searchable on a phone in practical time.)\n")
+        sb.append("No candidate matched. ")
+            .append("This tag's password is neither a documented default nor a simple\n")
+            .append("UID-derived value, so it was provisioned properly and cannot be\n")
+            .append("recovered here. (A 32-bit PWD is not exhaustively searchable on a\n")
+            .append("phone in practical time, and this tool does not attempt that.)\n")
         return sb.toString()
     }
 

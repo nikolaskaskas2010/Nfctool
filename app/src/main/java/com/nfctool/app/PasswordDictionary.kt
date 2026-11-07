@@ -27,4 +27,39 @@ object PasswordDictionary {
     )
 
     fun describe(pwd: ByteArray): String = HexUtils.toHex(pwd)
+
+    /**
+     * Candidate passwords derived from the tag UID using COMMON, PUBLISHED weak
+     * schemes. Many low-end deployments set PWD = some trivial transform of the
+     * UID instead of a random value; this recovers those for the tag's owner.
+     *
+     * This is a small, finite candidate set (not an exhaustive search). It can
+     * only open a tag whose password was derived by one of these known weak
+     * schemes; it cannot open a tag with a properly randomised password.
+     *
+     * @param uid the 7-byte UID (as returned by Tag.getId()).
+     */
+    fun deriveFromUid(uid: ByteArray): List<ByteArray> {
+        if (uid.size < 7) return emptyList()
+        val out = LinkedHashSet<List<Byte>>() // de-dupe by value
+
+        val first4 = byteArrayOf(uid[0], uid[1], uid[2], uid[3])
+        val last4 = byteArrayOf(uid[3], uid[4], uid[5], uid[6])
+
+        fun add(b: ByteArray) { out.add(b.toList()) }
+        fun xorAll(b: ByteArray, k: Int) =
+            ByteArray(4) { (b[it].toInt() xor k).toByte() }
+        fun rev(b: ByteArray) = byteArrayOf(b[3], b[2], b[1], b[0])
+
+        add(first4)
+        add(last4)
+        add(rev(first4))
+        add(rev(last4))
+        add(xorAll(first4, 0xFF))
+        add(xorAll(last4, 0xFF))
+        add(xorAll(first4, 0xAA))
+        add(xorAll(last4, 0x55))
+
+        return out.map { it.toByteArray() }
+    }
 }
